@@ -23,7 +23,7 @@ class MetasploitModule < Msf::Auxiliary
       ],
       'License'        => MSF_LICENSE
     ))
-  
+
     register_options(
       [
         OptString.new('HOSTNAME', [true, 'The hostname to find real IP', 'www.reunionnaisdumonde.com']),
@@ -54,7 +54,7 @@ class MetasploitModule < Msf::Auxiliary
     begin
       cli = Rex::Proto::Http::Client.new('www.prepostseo.com', 443, {}, true, nil, proxies)
       cli.connect
-  
+
       request = cli.request_cgi({
         'uri'    => '/domain-ip-history-checker',
         'method' => 'POST',
@@ -62,7 +62,7 @@ class MetasploitModule < Msf::Auxiliary
       })
       response = cli.send_recv(request)
       cli.close
-  
+
     rescue ::Rex::ConnectionError, Errno::ECONNREFUSED, Errno::ETIMEDOUT
       print_error('HTTP connection failed to PrePost SEO website.')
       return(false)
@@ -84,7 +84,7 @@ class MetasploitModule < Msf::Auxiliary
       print_bad('No domain IP(s) history founds.')
       return(false)
     end
-  
+
     return(arIps)
   end
 
@@ -189,7 +189,7 @@ class MetasploitModule < Msf::Auxiliary
     # Check for "misconfigured" web server on TCP/80.
     if do_check_tcp_port(ip, 80, proxies) then
       response = do_simple_get_request_raw(ip, 80, false, host, uri, proxies)
-  
+
       if response != false then
         html = response.get_html_document
         if fingerprint.to_s.eql? html.at('head').to_s then
@@ -202,7 +202,7 @@ class MetasploitModule < Msf::Auxiliary
     # Check for "misconfigured" web server on TCP/443.
     if do_check_tcp_port(ip, 443, proxies) then
         response = do_simple_get_request_raw(ip, 443, true, host, uri, proxies)
-  
+
         if response != false then
           html = response.get_html_document
           if fingerprint.to_s.eql? html.at('head').to_s then
@@ -217,9 +217,9 @@ class MetasploitModule < Msf::Auxiliary
 
   def run
     print_status('Passive gathering information...')
-    
+
     domain_name  = PublicSuffix.parse(datastore['HOSTNAME']).domain
-    
+
     # PrePost SEO
     ip_records   = do_grab_domain_ip_history(domain_name, datastore['Proxies'])
     ip_list      = ip_records if ip_records
