@@ -40,7 +40,7 @@ class MetasploitModule < Msf::Auxiliary
     begin
       sock = Rex::Socket::Tcp.create(
         'PeerHost' => ip,
-        'PeerPort' => port
+        'PeerPort' => port,
         'Proxies'  => proxies
       )
     rescue ::Rex::ConnectionRefused, Rex::ConnectionError
