@@ -8,7 +8,7 @@ class MetasploitModule < Msf::Auxiliary
   def initialize(info = {})
     super(update_info(info,
       'Name'           => 'Behind BinarySec/IngenSecurity',
-      'Version' => '$Release: 1.0',
+      'Version' => '$Release: 1.0.1',
       'Description'    => %q{
         This module can be useful if you need to test
         the security of your server and your website
@@ -44,10 +44,10 @@ class MetasploitModule < Msf::Auxiliary
         'Proxies'  => proxies
       )
     rescue ::Rex::ConnectionRefused, Rex::ConnectionError
-      return(false)
+      return false
     end
     sock.close
-    return(true)
+    return true
   end
 
   def do_grab_domain_ip_history(hostname, proxies)
@@ -65,27 +65,27 @@ class MetasploitModule < Msf::Auxiliary
 
     rescue ::Rex::ConnectionError, Errno::ECONNREFUSED, Errno::ETIMEDOUT
       print_error('HTTP connection failed to PrePost SEO website.')
-      return(false)
+      return false
     end
 
     html  = response.get_html_document
     table = html.css('table.table').first
     rows  = table.css('tr')
 
-    arIps = Array.new
+    arIps = []
     rows.each_with_index.map do | row, index |
       row = /(\d*\.\d*\.\d*\.\d*)/.match(row.css('td').map(&:text).to_s)
-      unless row.nil? then
+      unless row.nil?
         arIps.push(row)
       end
     end
 
-    if arIps.empty? then
+    if arIps.empty?
       print_bad('No domain IP(s) history founds.')
-      return(false)
+      return false
     end
 
-    return(arIps)
+    return arIps
   end
 
   ## auxiliary/gather/enum_dns.rb
@@ -95,11 +95,11 @@ class MetasploitModule < Msf::Auxiliary
     threads  = 1 if threads <= 0
 
     queue    = []
-    File.foreach(wordlist) do |line|
+    File.foreach(wordlist) do | line |
       queue << "#{line.chomp}.#{domain}"
     end
 
-    arIps = Array.new
+    arIps = []
     until queue.empty?
       t = []
       threads = 1 if threads <= 0
@@ -121,16 +121,16 @@ class MetasploitModule < Msf::Auxiliary
 
       rescue ::Timeout::Error
       ensure
-        t.each { |x| x.kill rescue nil }
+        t.each { | x | x.kill rescue nil }
       end
     end
 
-    if arIps.empty? then
+    if arIps.empty?
       print_bad('No domain IP(s) history founds.')
-      return(false)
+      return false
     end
 
-    return(arIps)
+    return arIps
   end
 
   ## auxiliary/gather/enum_dns.rb
@@ -140,7 +140,6 @@ class MetasploitModule < Msf::Auxiliary
 
     response.answer.each do | row |
       next unless row.class == Net::DNS::RR::A
-      #vprint_status("  * #{row.address} -> #{domain}")
     end
   end
 
@@ -165,7 +164,7 @@ class MetasploitModule < Msf::Auxiliary
       http    = Rex::Proto::Http::Client.new(host, port, {}, ssl, nil, proxies)
       http.connect
 
-      unless host_header.eql? nil then
+      unless host_header.eql? nil
         http.set_config({ 'vhost' => host_header })
       end
 
@@ -178,41 +177,41 @@ class MetasploitModule < Msf::Auxiliary
 
     rescue ::Rex::ConnectionError, Errno::ECONNREFUSED, Errno::ETIMEDOUT
       print_error('HTTP Connection Failed')
-      return(false)
+      return false
     end
 
-    return(response)
+    return response
   end
 
   def do_check_bypass(fingerprint, host, ip, uri, proxies)
 
     # Check for "misconfigured" web server on TCP/80.
-    if do_check_tcp_port(ip, 80, proxies) then
+    if do_check_tcp_port(ip, 80, proxies)
       response = do_simple_get_request_raw(ip, 80, false, host, uri, proxies)
 
-      if response != false then
+      if response != false
         html = response.get_html_document
-        if fingerprint.to_s.eql? html.at('head').to_s then
+        if fingerprint.to_s.eql? html.at('head').to_s
           print_good("A direct-connect IP address was found: #{ip}")
-          return(true)
+          return true
         end
       end
     end
 
     # Check for "misconfigured" web server on TCP/443.
-    if do_check_tcp_port(ip, 443, proxies) then
+    if do_check_tcp_port(ip, 443, proxies)
         response = do_simple_get_request_raw(ip, 443, true, host, uri, proxies)
 
-        if response != false then
+        if response != false
           html = response.get_html_document
-          if fingerprint.to_s.eql? html.at('head').to_s then
+          if fingerprint.to_s.eql? html.at('head').to_s
             print_good("A direct-connect IP address was found: #{ip}")
-            return(true)
+            return true
           end
         end
       end
 
-    return(false)
+    return false
   end
 
   def run
@@ -236,7 +235,7 @@ class MetasploitModule < Msf::Auxiliary
     records      = []
     ip_list.each do | ip |
       a = do_dns_get_a(ip.to_s)
-      unless a.to_s.include? ("binarysec" || "ingensec") then
+      unless a.to_s.include? ("binarysec" || "ingensec")
         unless ip.to_s.eql? "127.0.0.1"
           records |= ip.to_a
         end
@@ -246,7 +245,7 @@ class MetasploitModule < Msf::Auxiliary
     print_status()
 
     # Processing bypass...
-    unless records.eql? false || records.empty? then
+    unless records.eql? false || records.empty?
       print_status('Bypass BinarySec/IngenSec is in progress...')
 
       # Initial HTTP request to the server (for <head> comparison).
@@ -278,7 +277,7 @@ class MetasploitModule < Msf::Auxiliary
       end
     end
 
-    if ret_val.eql? false then
+    if ret_val.eql? false
       print_bad('No direct-connect IP address found :-(')
     end
   end
