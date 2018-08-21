@@ -8,7 +8,7 @@ class MetasploitModule < Msf::Auxiliary
   def initialize(info = {})
     super(update_info(info,
       'Name'           => 'Behind BinarySec/IngenSecurity',
-      'Version' => '$Release: 1.0.1',
+      'Version' => '$Release: 1.0.2',
       'Description'    => %q{
         This module can be useful if you need to test
         the security of your server and your website
@@ -26,7 +26,7 @@ class MetasploitModule < Msf::Auxiliary
 
     register_options(
       [
-        OptString.new('HOSTNAME', [true, 'The hostname to find real IP', 'www.reunionnaisdumonde.com']),
+        OptString.new('HOSTNAME', [true, 'The hostname to find real IP']),
         OptString.new('URIPATH', [true, 'The URI path (for custom comparison)', '/']),
         OptInt.new('RPORT', [true, 'The target port (for custom comparison)', 443]),
         OptBool.new('SSL', [true, 'Negotiate SSL/TLS for outgoing connections (for custom comparison)', true]),
@@ -126,7 +126,7 @@ class MetasploitModule < Msf::Auxiliary
     end
 
     if arIps.empty?
-      print_bad('No domain IP(s) history founds.')
+      print_bad('No enumerated domain IP(s) founds.')
       return false
     end
 
@@ -218,68 +218,81 @@ class MetasploitModule < Msf::Auxiliary
     print_status('Passive gathering information...')
 
     domain_name  = PublicSuffix.parse(datastore['HOSTNAME']).domain
+    ip_list      = []
 
     # PrePost SEO
     ip_records   = do_grab_domain_ip_history(domain_name, datastore['Proxies'])
-    ip_list      = ip_records if ip_records
-    print_status(" * PrePost SEO: #{ip_records.count.to_s} IP address found(s).")
+    ip_list     |= ip_records unless ip_records.eql? false
+    unless ip_records.eql? false
+      print_status(" * PrePost SEO: #{ip_records.count.to_s} IP address found(s).")
+    end
 
     # DNS Enum.
     ip_records   = do_dns_enumeration(domain_name, datastore['THREADS'])
-    ip_list     |= ip_records if ip_records
-    print_status(" * DNS Enumeration: #{ip_records.count.to_s} IP address found(s).")
-    print_status()
+    ip_list     |= ip_records unless ip_records.eql? false
+    unless ip_records.eql? false
+      print_status(" * DNS Enumeration: #{ip_records.count.to_s} IP address found(s).")
+      print_status()
+    end
 
-    # Cleaning the results.
-    print_status("Clean binarysec/ingensec server(s)...")
-    records      = []
-    ip_list.each do | ip |
-      a = do_dns_get_a(ip.to_s)
-      unless a.to_s.include? ("binarysec" || "ingensec")
-        unless ip.to_s.eql? "127.0.0.1"
-          records |= ip.to_a
+    unless ip_list.empty?
+
+      # Cleaning the results.
+      print_status("Clean binarysec/ingensec server(s)...")
+      records      = []
+      ip_list.each do | ip |
+        a = do_dns_get_a(ip.to_s)
+        unless a.to_s.include? "binarysec"
+          unless a.to_s.include? "ingensec"
+            unless ip.to_s.eql? "127.0.0.1"
+              records |= ip.to_a
+            end
+          end
         end
       end
-    end
-    print_good(" * TOTAL: #{records.count.to_s} IP address found(s) after cleaning.")
-    print_status()
 
-    # Processing bypass...
-    unless records.eql? false || records.empty?
-      print_status('Bypass BinarySec/IngenSec is in progress...')
+      if records.empty?
+        print_bad(" * TOTAL: #{records.count.to_s} IP address found(s) after cleaning.")
+      else
+        print_good(" * TOTAL: #{records.count.to_s} IP address found(s) after cleaning.")
+        print_status()
 
-      # Initial HTTP request to the server (for <head> comparison).
-      print_status(' * Initial request to the original server for comparison')
-      response = do_simple_get_request_raw(
-        datastore['HOSTNAME'],
-        datastore['RPORT'],
-        datastore['SSL'],
-        nil,
-        datastore['URIPATH'],
-        datastore['PROXIES']
-      )
+        # Processing bypass...
+        print_status('Bypass BinarySec/IngenSec is in progress...')
 
-      html     = response.get_html_document
-      head     = html.at('head')
+        # Initial HTTP request to the server (for <head> comparison).
+        print_status(' * Initial request to the original server for comparison')
+        response = do_simple_get_request_raw(
+          datastore['HOSTNAME'],
+          datastore['RPORT'],
+          datastore['SSL'],
+          nil,
+          datastore['URIPATH'],
+          datastore['PROXIES']
+        )
 
-      ret_val  = false
-      records.each_with_index do | ip, index |
-        vprint_status(" * Trying: #{ip}")
+        html     = response.get_html_document
+        head     = html.at('head')
 
-        ret_val = do_check_bypass(
+        ret_val  = false
+        records.each_with_index do | ip, index |
+          vprint_status(" * Trying: #{ip}")
+
+          ret_val = do_check_bypass(
             head,
             datastore['HOSTNAME'],
             ip,
             datastore['URIPATH'],
             datastore['PROXIES']
-        )
-        break if ret_val.eql? true
+          )
+          break if ret_val.eql? true
+        end
+
+        if ret_val.eql? false
+          print_bad('No direct-connect IP address found :-(')
+        end
+
       end
     end
-
-    if ret_val.eql? false
-      print_bad('No direct-connect IP address found :-(')
-    end
   end
-
 end
