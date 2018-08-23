@@ -39,7 +39,7 @@ class MetasploitModule < Msf::Auxiliary
 
     register_advanced_options(
       [
-        OptString.new('COMPSTR', [false, 'xxx']),
+        OptString.new('COMPSTR', [false, 'You can use a custom string to perform the comparison (default is HOSTNAME).']),
         OptAddress.new('NS', [false, 'Specify the nameserver to use for queries (default is system DNS)'])
       ])
   end
@@ -77,8 +77,6 @@ class MetasploitModule < Msf::Auxiliary
     end
 
     html  = response.get_html_document
-
-    #puts html
 
     table = html.css('table.table').first
     rows  = table.css('tr')
@@ -177,9 +175,14 @@ class MetasploitModule < Msf::Auxiliary
   end
 
   ## auxiliary/gather/enum_dns.rb
-  def do_save_note(hostname, ip)
-    data = { 'target' => hostname, 'real_ip' => ip }
-    report_note(host: hostname, type: 'direct-connect IP', data: data)
+  def do_save_note(hostname, ip, sname)
+    data = { 'vhost' => hostname, 'real_ip' => ip, 'sname' => sname }
+    report_note(
+      :host  => hostname,
+      :type  => "behind_ingensec",
+      :data  => data,
+      update: :unique_data
+    )
   end
 
   def do_simple_get_request_raw(host, port, ssl, host_header=nil, uri, proxies)
@@ -223,7 +226,7 @@ class MetasploitModule < Msf::Auxiliary
             html = response.get_html_document
             if html.at('html').to_s.include? fingerprint
               print_good("A direct-connect IP address was found: #{ip}:80")
-              do_save_note(host, ip)
+              do_save_note(host, ip, 'http')
               ret_value = true
             end
           end
@@ -241,7 +244,7 @@ class MetasploitModule < Msf::Auxiliary
             html = response.get_html_document
             if html.at('html').to_s.include? fingerprint
               print_good("A direct-connect IP address was found: #{ip}:443")
-              do_save_note(host, ip)
+              do_save_note(host, ip, 'https')
               ret_value = true
             end
           end

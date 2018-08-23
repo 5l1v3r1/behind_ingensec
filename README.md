@@ -17,6 +17,11 @@ Ingensec HTTP headers:
 
 ![alt text][module_waf_ingensec]
 
+Using the resource script:
+
+![alt text][script_autodiscover]
+
 [module_info]: https://raw.githubusercontent.com/mekhalleh/behind_ingensec/master/pictures/01-demo.png "Module: info"
 [module_demo]: https://raw.githubusercontent.com/mekhalleh/behind_ingensec/master/pictures/02-demo.png "Module: demo"
 [module_waf_ingensec]: https://raw.githubusercontent.com/mekhalleh/behind_ingensec/master/pictures/03-demo.png "Module: Ingensec"
+[script_autodiscover]: https://raw.githubusercontent.com/mekhalleh/behind_ingensec/master/pictures/04-demo.png "Module: By autodiscover"

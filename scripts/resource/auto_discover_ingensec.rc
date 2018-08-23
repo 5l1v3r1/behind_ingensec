@@ -1,0 +1,14 @@
+use auxiliary/gather/behind_ingensec
+
+<ruby>
+File.open('/tmp/ingensec_hosts.lst', 'r') do | file |
+  file.each_line do | hostname |
+    run_single("set HOSTNAME #{hostname}")
+    run_single('run')
+
+    run_single("set RPORT 80")
+    run_single("set SSL false")
+    run_single('run')
+  end
+end
+</ruby>
