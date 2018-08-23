@@ -9,7 +9,7 @@ class MetasploitModule < Msf::Auxiliary
   def initialize(info = {})
     super(update_info(info,
       'Name'           => 'Behind BinarySec/IngenSecurity',
-      'Version'        => '$Release: 1.0.3',
+      'Version'        => '$Release: 1.0.4',
       'Description'    => %q{
         This module can be useful if you need to test
         the security of your server and your website
@@ -35,6 +35,12 @@ class MetasploitModule < Msf::Auxiliary
         OptString.new('Proxies', [false, 'A proxy chain of format type:host:port[,type:host:port][...]']),
         OptInt.new('THREADS', [true, 'Threads for DNS enumeration', 15]),
         OptPath.new('WORDLIST', [true, 'Wordlist of subdomains', ::File.join(Msf::Config.data_directory, 'wordlists', 'namelist.txt')])
+      ])
+
+    register_advanced_options(
+      [
+        OptString.new('COMPSTR', [false, 'xxx']),
+        OptAddress.new('NS', [false, 'Specify the nameserver to use for queries (default is system DNS)'])
       ])
   end
 
@@ -71,6 +77,9 @@ class MetasploitModule < Msf::Auxiliary
     end
 
     html  = response.get_html_document
+
+    #puts html
+
     table = html.css('table.table').first
     rows  = table.css('tr')
 
@@ -148,7 +157,14 @@ class MetasploitModule < Msf::Auxiliary
   ## auxiliary/gather/enum_dns.rb
   def do_dns_query(domain, type)
     begin
-      dns                = Net::DNS::Resolver.new
+      nameserver         = datastore['NS']
+
+      if nameserver.blank?
+        dns = Net::DNS::Resolver.new
+      else
+        dns = Net::DNS::Resolver.new(nameservers: ::Rex::Socket.resolv_to_dotted(nameserver))
+      end
+
       dns.use_tcp        = false
       dns.udp_timeout    = 8
       dns.retry_number   = 2
@@ -182,16 +198,20 @@ class MetasploitModule < Msf::Auxiliary
       response = http.send_recv(request)
       http.close
 
-    rescue ::Rex::ConnectionError, Errno::ECONNREFUSED, Errno::ETIMEDOUT
-      print_error('HTTP Connection Failed')
-      return false
+    rescue ::Rex::ConnectionError, Errno::ECONNREFUSED, Errno::ETIMEDOUT, StandardError => error
+      print_error(error.message)
     end
+    return false if response.nil?
 
     return response
   end
 
-  def do_check_bypass(fingerprint, host, ip, uri, proxies)
+  def do_check_bypass(host, ip, uri, proxies)
     ret_value = false
+
+    if datastore['COMPSTR'].blank?
+      fingerprint = host
+    end
 
     # Check for "misconfigured" web server on TCP/80.
     if do_check_tcp_port(ip, 80, proxies)
@@ -199,11 +219,13 @@ class MetasploitModule < Msf::Auxiliary
 
       if response != false
         unless response.headers.to_s.include? 'Server: gatejs'
-          html = response.get_html_document
-          if html.at('head').to_s.include? host
-            print_good("A direct-connect IP address was found: #{ip}:80")
-            do_save_note(host, ip)
-            ret_value = true
+          unless response.headers.to_s.include? 'binarysec'
+            html = response.get_html_document
+            if html.at('html').to_s.include? fingerprint
+              print_good("A direct-connect IP address was found: #{ip}:80")
+              do_save_note(host, ip)
+              ret_value = true
+            end
           end
         end
       end
@@ -215,11 +237,13 @@ class MetasploitModule < Msf::Auxiliary
 
       if response != false
         unless response.headers.to_s.include? 'Server: gatejs'
-          html = response.get_html_document
-          if html.at('head').to_s.include? host
-            print_good("A direct-connect IP address was found: #{ip}:443")
-            do_save_note(host, ip)
-            ret_value = true
+          unless response.headers.to_s.include? 'binarysec'
+            html = response.get_html_document
+            if html.at('html').to_s.include? fingerprint
+              print_good("A direct-connect IP address was found: #{ip}:443")
+              do_save_note(host, ip)
+              ret_value = true
+            end
           end
         end
       end
@@ -274,26 +298,11 @@ class MetasploitModule < Msf::Auxiliary
         # Processing bypass...
         print_status('Bypass BinarySec/IngenSec is in progress...')
 
-        # Initial HTTP request to the server (for <head> comparison).
-        print_status(' * Initial request to the original server for comparison')
-        response = do_simple_get_request_raw(
-          datastore['HOSTNAME'],
-          datastore['RPORT'],
-          datastore['SSL'],
-          nil,
-          datastore['URIPATH'],
-          datastore['PROXIES']
-        )
-
-        html     = response.get_html_document
-        head     = html.at('head')
-
         ret_val  = false
         records.each_with_index do | ip, index |
           vprint_status(" * Trying: #{ip}")
 
           ret_val = do_check_bypass(
-            head,
             datastore['HOSTNAME'],
             ip,
             datastore['URIPATH'],

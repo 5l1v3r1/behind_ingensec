@@ -55,6 +55,14 @@ This French security solution is (apparently) mainly deployed on the Reunion isl
 
 ## Advanced options
 
+  **COMPSTR**
+
+  You can use a custom string to perform the comparison. Default: HOSTNAME if it's empty.
+
+  **NS**
+
+  Specify the nameserver to use for queries. Default: is system DNS
+
   **VERBOSE**
 
   You can also enable the verbose mode to have more information displayed in the console.
@@ -75,8 +83,8 @@ This French security solution is (apparently) mainly deployed on the Reunion isl
   [*] 
   [*] Bypass BinarySec/IngenSec is in progress...
   [*]  * Initial request to the original server for comparison
-  [*]  * Trying: 41.213.137.67
-  [+] A direct-connect IP address was found: 41.213.137.67
+  [*]  * Trying: XXX.XXX.XXX.XXX
+  [+] A direct-connect IP address was found: XXX.XXX.XXX.XXX
   [*] Auxiliary module execution completed
   ```
 
@@ -98,8 +106,6 @@ This French security solution is (apparently) mainly deployed on the Reunion isl
 ## TOTO list
 
   1. Add other data sources (censys, ...)
-  2. Add customized DNS resolver
-  3. Add customized string comparison
 
 ## References
 
