@@ -7,7 +7,7 @@ behind BinarySec/IngenSec by discovering the real IP address.
 
 ![alt text][module_info]
 
-More precisely, I use multiple data sources (DNS enumeration, SEO PrePost) to collect
+More precisely, I use multiple data sources (DNS enumeration, SEO PrePost and Censys) to collect
 assigned (or have been) IP addresses from the targeted site or domain that uses the 
 BinarySec or IngenSec WAF as a service.
 
